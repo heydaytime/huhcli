@@ -17,6 +17,8 @@ When a command fails, run `huh`. It reads your recent shell history, detects the
    - **(s)** Save the correction pair and run it (improves future suggestions)
    - **(q)** Quit
 
+![huh in action](screenshots/huh%20working.png)
+
 ---
 
 ## Requirements
@@ -112,6 +114,8 @@ Run (r), Copy (c), Save & Run (s), or Quit (q)? [r]:
 ---
 
 ## Commands
+
+![huh --help](screenshots/help.png)
 
 | Command | Description |
 |---------|-------------|
