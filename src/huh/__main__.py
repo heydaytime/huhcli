@@ -4,12 +4,21 @@ import sys
 import os
 import subprocess
 
-from huh.paths import data_path
-
 HUHCLI_PATH = os.environ.get(
     "HUHCLI_PATH",
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
 )
+
+
+def _data_dir() -> str:
+    base = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    path = os.path.join(base, "huh")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _storage_path() -> str:
+    return os.path.join(_data_dir(), "storage.txt")
 
 
 def _detect_shell() -> str:
@@ -35,7 +44,7 @@ function huhcli() {{
   local HUH_PYTHON="$HUHCLI_PATH/venv/bin/python"
   source "$HUHCLI_PATH/venv/bin/activate"
   if [ $# -eq 0 ]; then
-    fc -ln 1 | tail -n 1000 > "{data_path('storage.txt')}"
+    fc -ln 1 | tail -n 1000 > "{_storage_path()}"
     "$HUH_PYTHON" -m huh correct
   else
     "$HUH_PYTHON" -m huh "$@"
@@ -50,7 +59,7 @@ if __name__ == "__main__":
             shell = _detect_shell()
             print_alias(shell)
         elif "--store" in sys.argv:
-            with open(data_path("storage.txt"), "w") as f:
+            with open(_storage_path(), "w") as f:
                 f.write(" ".join(sys.argv[2:]))
         else:
             main_path = os.path.join(os.path.dirname(__file__), "main.py")
