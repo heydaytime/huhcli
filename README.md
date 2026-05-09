@@ -30,14 +30,36 @@ When a command fails, run `huhcli`. It reads your recent shell history, detects 
 
 ## Installation
 
-### Via Homebrew (recommended)
+### macOS (Homebrew)
 
 ```bash
 brew tap heydaytime/huhcli
 brew install huhcli
 ```
 
-Then run the setup command to install the shell wrapper:
+### Linux (One-liner)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/heydaytime/huhcli/main/install.sh | bash
+```
+
+### Manual (any platform)
+
+```bash
+git clone https://github.com/heydaytime/huhcli.git
+cd huhcli
+python -m venv venv
+source venv/bin/activate
+pip install .
+python -m huh setup
+source ~/.zshrc   # or ~/.bashrc
+```
+
+---
+
+## Shell Setup
+
+After installation, run the setup command to install the shell wrapper:
 
 ```bash
 huhcli setup
@@ -49,17 +71,7 @@ Reload your shell:
 source ~/.zshrc   # or source ~/.bashrc
 ```
 
-### Manual
-
-```bash
-git clone https://github.com/heydaytime/huhcli.git
-cd huhcli
-python -m venv venv
-source venv/bin/activate
-pip install .
-python -m huh setup
-source ~/.zshrc   # or source ~/.bashrc
-```
+This registers the `huhcli` function, which captures your shell history before invoking the corrector.
 
 ---
 
@@ -107,7 +119,8 @@ Run (r), Copy (c), Save & Run (s), or Quit (q)? [r]:
 | `huhcli setup` | Install the shell wrapper into your rc file. Run once after installing. |
 | `huhcli select` | Choose which local Ollama model to use. Required on first run. |
 | `huhcli store <n>` | Save the last `n` commands to the fuzzy matching cache. |
-| `huhcli history-cmd [n]` | Show the last `n` commands from captured history (default: 4). |
+| `huhcli history [n]` | Show the last `n` commands from captured history (default: 4). |
+| `huhcli stored` | Show the commands currently in the fuzzy matching cache. |
 
 ---
 

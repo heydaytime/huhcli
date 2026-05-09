@@ -59,7 +59,7 @@ def read_history(path: Optional[str] = None) -> List[str]:
 
 def get_failed_command(history: List[str]) -> Optional[str]:
     skip_prefixes = (
-        "huh", "python -m huh", "typer ./src/huh", "pip install", "./clean.zsh",
+        "huh", "python -m huh", "typer ./src/huh", "pip install",
         "source ", ". ", "export ", "eval ", "alias ", "unalias ",
         "setopt ", "unsetopt ", "clear", "exit", "history", "fc ",
         "bindkey ", "zstyle ", "autoload ", "compinit", "typeset ",
@@ -77,6 +77,34 @@ def _run_command(cmd: str) -> None:
     except KeyboardInterrupt:
         print()
         raise typer.Exit(0)
+
+
+def _copy_to_clipboard(text: str) -> bool:
+    """Copy text to clipboard using the best available tool."""
+    # Linux (Wayland)
+    try:
+        subprocess.run(["wl-copy"], input=text.encode(), check=True)
+        return True
+    except Exception:
+        pass
+    # Linux (X11)
+    try:
+        subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode(), check=True)
+        return True
+    except Exception:
+        pass
+    try:
+        subprocess.run(["xsel", "--clipboard", "--input"], input=text.encode(), check=True)
+        return True
+    except Exception:
+        pass
+    # macOS
+    try:
+        subprocess.run(["pbcopy"], input=text.encode(), check=True)
+        return True
+    except Exception:
+        pass
+    return False
 
 
 def _ensure_platform() -> None:
@@ -309,11 +337,11 @@ def correct(
             print(f"[dim]Running: {suggestion}[/dim]")
             _run_command(suggestion)
         elif choice == "c":
-            try:
-                subprocess.run(["pbcopy"], input=suggestion.encode(), check=True)
+            if _copy_to_clipboard(suggestion):
                 print("[green]Copied to clipboard.[/green]")
-            except Exception:
+            else:
                 print("[yellow]Could not copy to clipboard.[/yellow]")
+                print("[dim]Install xclip, xsel, or wl-copy for clipboard support.[/dim]")
         elif choice == "s":
             record_accepted(failed, suggestion)
             print(f"[dim]Running: {suggestion}[/dim]")
