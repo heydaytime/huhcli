@@ -130,7 +130,7 @@ def _ensure_initialized() -> None:
         print("[yellow]huh has not been initialized yet.[/yellow]")
         print("")
         print("Please select a model first by running:")
-        print("  huhcli select")
+        print("  huh select")
         raise typer.Exit(1)
 
 
@@ -157,20 +157,20 @@ def _shell_function(shell: str) -> str:
         history_cmd = f'fc -ln 1 | tail -n 1000 > "{storage}"'
 
     return f"""
-# === huhcli shell wrapper (auto-installed) ===
-function huhcli() {{
+# === huh shell wrapper (auto-installed) ===
+function huh() {{
   if [ $# -eq 0 ]; then
     {history_cmd}
-    command huhcli correct
+    command huh correct
   else
-    command huhcli "$@"
+    command huh "$@"
   fi
 }}
-# === end huhcli ===
+# === end huh ===
 """
 
 
-@app.command(help="Install the huhcli shell wrapper into your ~/.zshrc or ~/.bashrc.")
+@app.command(help="Install the huh shell wrapper into your ~/.zshrc or ~/.bashrc.")
 def setup():
     _ensure_platform()
     shell = _detect_shell()
@@ -184,8 +184,8 @@ def setup():
             existing = f.read()
 
     # Remove old wrapper if present
-    marker_start = "# === huhcli shell wrapper"
-    marker_end = "# === end huhcli ==="
+    marker_start = "# === huh shell wrapper"
+    marker_end = "# === end huh ==="
     if marker_start in existing:
         start = existing.find(marker_start)
         end = existing.find(marker_end, start) + len(marker_end)
@@ -196,12 +196,12 @@ def setup():
     with open(rc, "w") as f:
         f.write(existing.rstrip() + "\n" + func + "\n")
 
-    print(f"[green]Installed huhcli shell wrapper into {rc}[/green]")
+    print(f"[green]Installed huh shell wrapper into {rc}[/green]")
     print("")
     print("Please reload your shell:")
     print(f"  source {rc}")
     print("")
-    print("Then run [bold]huhcli select[/bold] to choose your AI model.")
+    print("Then run [bold]huh select[/bold] to choose your AI model.")
 
 
 @app.command(help="Choose the Ollama model for corrections (required on first run).")
@@ -376,7 +376,7 @@ def stored():
     commands = load_stored()
     if not commands:
         print("[yellow]No stored commands found.[/yellow]")
-        print("Use [bold]huhcli store <n>[/bold] to save commands from your history.")
+        print("Use [bold]huh store <n>[/bold] to save commands from your history.")
         raise typer.Exit(0)
 
     print(f"[bold]Stored commands ({len(commands)} total):[/bold]")
@@ -385,4 +385,4 @@ def stored():
 
 
 if __name__ == "__main__":
-    app(prog_name="huhcli")
+    app(prog_name="huh")

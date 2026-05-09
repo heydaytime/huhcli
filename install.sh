@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== huhcli installer ==="
+echo "=== huh installer ==="
 
 # Detect OS
 OS="$(uname -s)"
@@ -91,11 +91,11 @@ install_linux() {
 
     # Create wrapper script that uses venv python
     mkdir -p "$BIN_DIR"
-    cat > "$BIN_DIR/huhcli" <<EOF
+    cat > "$BIN_DIR/huh" <<EOF
 #!/usr/bin/env bash
 exec "$VENV_DIR/bin/python" -m huh "\$@"
 EOF
-    chmod +x "$BIN_DIR/huhcli"
+    chmod +x "$BIN_DIR/huh"
 
     # Ensure ~/.local/bin is on PATH
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
@@ -106,7 +106,7 @@ EOF
         echo "Then reload your shell."
     fi
 
-    echo "Installed binary to $BIN_DIR/huhcli"
+    echo "Installed binary to $BIN_DIR/huh"
 }
 
 # Main install
@@ -121,22 +121,22 @@ fi
 
 # Install shell wrapper
 FUNC_BLOCK="
-# === huhcli shell wrapper (auto-installed) ===
-function huhcli() {
+# === huh shell wrapper (auto-installed) ===
+function huh() {
   if [ \$# -eq 0 ]; then
     if [ -n \"\$BASH_VERSION\" ]; then
       history | tail -n 1000 | sed 's/^[ ]*[0-9]*[ ]*//' > \"$STORAGE_DIR/storage.txt\"
     else
       fc -ln 1 | tail -n 1000 > \"$STORAGE_DIR/storage.txt\"
     fi
-    command huhcli correct
+    command huh correct
   else
-    command huhcli \"\$@\"
+    command huh \"\$@\"
   fi
 }
-# === end huhcli ==="
+# === end huh ==="
 
-if grep -q "# === huhcli shell wrapper" "$RC_FILE" 2>/dev/null; then
+if grep -q "# === huh shell wrapper" "$RC_FILE" 2>/dev/null; then
     echo "Shell wrapper already present in $RC_FILE"
 else
     echo "$FUNC_BLOCK" >> "$RC_FILE"
@@ -149,6 +149,6 @@ echo "Reload your shell:"
 echo "  source $RC_FILE"
 echo ""
 echo "Then select an Ollama model:"
-echo "  huhcli select"
+echo "  huh select"
 echo ""
-echo "Make sure Ollama is running before using huhcli."
+echo "Make sure Ollama is running before using huh."

@@ -1,15 +1,15 @@
-# huhcli — AI CLI Syntax Autocorrector
+# huh — AI CLI Syntax Autocorrector
 
-**huhcli** is a lightweight shell assistant that suggests corrections for mistyped or failed CLI commands using a local LLM via [Ollama](https://ollama.com).
+**huh** is a lightweight shell assistant that suggests corrections for mistyped or failed CLI commands using a local LLM via [Ollama](https://ollama.com).
 
-When a command fails, run `huhcli`. It reads your recent shell history, detects the most likely failed command, asks a local model for a fix, and lets you run, copy, or save the suggestion instantly.
+When a command fails, run `huh`. It reads your recent shell history, detects the most likely failed command, asks a local model for a fix, and lets you run, copy, or save the suggestion instantly.
 
 ---
 
 ## How It Works
 
-1. **Capture history** — `huhcli` snapshots the last 1000 commands from your shell history.
-2. **Detect the failure** — It skips internal/meta commands (e.g., `source`, `export`, `huhcli` itself) and picks the most recent real command as the one to correct.
+1. **Capture history** — `huh` snapshots the last 1000 commands from your shell history.
+2. **Detect the failure** — It skips internal/meta commands (e.g., `source`, `export`, `huh` itself) and picks the most recent real command as the one to correct.
 3. **Ask the model** — A few-shot prompt is built from your recent history, previously accepted corrections, and fuzzy-matched stored commands, then sent to your local Ollama instance.
 4. **Interact** — You get a suggested fix and can choose to:
    - **(r)** Run it immediately
@@ -62,7 +62,7 @@ source ~/.zshrc   # or ~/.bashrc
 After installation, run the setup command to install the shell wrapper:
 
 ```bash
-huhcli setup
+huh setup
 ```
 
 Reload your shell:
@@ -71,7 +71,7 @@ Reload your shell:
 source ~/.zshrc   # or source ~/.bashrc
 ```
 
-This registers the `huhcli` function, which captures your shell history before invoking the corrector.
+This registers the `huh` function, which captures your shell history before invoking the corrector.
 
 ---
 
@@ -80,10 +80,10 @@ This registers the `huhcli` function, which captures your shell history before i
 After installation, choose which local Ollama model to use:
 
 ```bash
-huhcli select
+huh select
 ```
 
-This lists every model you have pulled locally and lets you pick one. Your choice is saved to `~/.config/huh/config.json` and will be used for all future corrections. You can change it anytime by running `huhcli select` again.
+This lists every model you have pulled locally and lets you pick one. Your choice is saved to `~/.config/huh/config.json` and will be used for all future corrections. You can change it anytime by running `huh select` again.
 
 ---
 
@@ -92,7 +92,7 @@ This lists every model you have pulled locally and lets you pick one. Your choic
 After a command fails or you mistype something, simply run:
 
 ```bash
-huhcli
+huh
 ```
 
 **Example interaction:**
@@ -100,7 +100,7 @@ huhcli
 ```bash
 $ gti status
 zsh: command not found: gti
-$ huhcli
+$ huh
 Failed command: gti status
 Asking Ollama...
 ╭──────── Suggested command ────────╮
@@ -115,12 +115,12 @@ Run (r), Copy (c), Save & Run (s), or Quit (q)? [r]:
 
 | Command | Description |
 |---------|-------------|
-| `huhcli` | Detect the last failed command and suggest a correction. |
-| `huhcli setup` | Install the shell wrapper into your rc file. Run once after installing. |
-| `huhcli select` | Choose which local Ollama model to use. Required on first run. |
-| `huhcli store <n>` | Save the last `n` commands to the fuzzy matching cache. |
-| `huhcli history [n]` | Show the last `n` commands from captured history (default: 4). |
-| `huhcli stored` | Show the commands currently in the fuzzy matching cache. |
+| `huh` | Detect the last failed command and suggest a correction. |
+| `huh setup` | Install the shell wrapper into your rc file. Run once after installing. |
+| `huh select` | Choose which local Ollama model to use. Required on first run. |
+| `huh store <n>` | Save the last `n` commands to the fuzzy matching cache. |
+| `huh history [n]` | Show the last `n` commands from captured history (default: 4). |
+| `huh stored` | Show the commands currently in the fuzzy matching cache. |
 
 ---
 
