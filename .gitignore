@@ -1,7 +1,41 @@
-*.egg-info/
-build/
-venv/
+# Python
 __pycache__/
-storage.txt
-accepted.json
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+
+# User data (generated at runtime)
+storage.txt
+config.json
+accepted.json
+stored_commands.json

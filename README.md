@@ -1,212 +1,167 @@
-# huh – AI CLI Syntax Autocorrector (Pre-Pre-Pre Alpha 🚧)
+# huhcli — AI CLI Syntax Autocorrector
 
-**Ever mistyped a CLI command and got hit with a vague error?**  
-*huh* is an experimental (and very early stage) CLI tool that suggests what you might have meant to type.
+**huhcli** is a lightweight shell assistant that suggests corrections for mistyped or failed CLI commands using a local LLM via [Ollama](https://ollama.com).
+
+When a command fails, run `huhcli`. It reads your recent shell history, detects the most likely failed command, asks a local model for a fix, and lets you run, copy, or save the suggestion instantly.
 
 ---
-# Updates JUN 16 2025
 
-I finally figured out how to get tab completion working with typer. 
-It used to work with the typer command but not the huhcli command. 
-It's pretty straightforward actually. I just needed to forward all commands form __main__.py to main.py
+## How It Works
 
-Add this to your .zshrc file to enable the tool:
+1. **Capture history** — `huhcli` snapshots the last 1000 commands from your shell history.
+2. **Detect the failure** — It skips internal/meta commands (e.g., `source`, `export`, `huhcli` itself) and picks the most recent real command as the one to correct.
+3. **Ask the model** — A few-shot prompt is built from your recent history, previously accepted corrections, and fuzzy-matched stored commands, then sent to your local Ollama instance.
+4. **Interact** — You get a suggested fix and can choose to:
+   - **(r)** Run it immediately
+   - **(c)** Copy it to your clipboard
+   - **(s)** Save the correction pair and run it (improves future suggestions)
+   - **(q)** Quit
 
-```shell
-fpath+=~/.zfunc; autoload -Uz compinit; compinit
-export HUHCLI_PATH="$HOME/ProgrammingProjects/huh-cli"
-eval "$(python $HUHCLI_PATH/src/huh/__main__.py --alias)"
+---
 
-```
+## Requirements
 
+- **macOS or Linux**
+- **zsh or bash**
+- **Python** >= 3.9
+- **[Ollama](https://ollama.com)** running locally
 
-# Updates JUN 14 2025
+---
 
-I found out that the 'lastcmd' tool is already a part of macos/linux. 
+## Installation
 
-You can get the by simply running
+### Via Homebrew (recommended)
 
 ```bash
-fn -ln -1
+brew tap heydaytime/huhcli
+brew install huhcli
 ```
-That simplifies the whole thing a lot. We can now just focus on implementing AI and our fast cache solution. 
 
-To get this new functionality running do the following:
+### Manual
 
-- Append $eval("python /path/to/your/__main__.py --alias") to your ~/.zshrc file
-- Run the following command to make the script executable:
 ```bash
-chmod +x /path/to/your/__main__.py
-```
-- Also source your .zshrc file to make the changes take effect:
-```bash
-source ~/.zshrc
+git clone https://github.com/heydaytime/huhcli.git
+cd huhcli
+python -m venv venv
+source venv/bin/activate
+pip install .
 ```
 
-NOW you can run the tool using the command:
+---
+
+## Shell Setup
+
+Generate the shell wrapper. The tool auto-detects your shell, but you can also force it:
+
+```bash
+# zsh
+python -m huh --alias --shell zsh
+
+# bash
+python -m huh --alias --shell bash
+```
+
+Copy the printed block into your rc file (`~/.zshrc` or `~/.bashrc`). It looks like this:
+
+```zsh
+function huhcli() {
+  local HUH_PYTHON="$HUHCLI_PATH/venv/bin/python"
+  source "$HUHCLI_PATH/venv/bin/activate"
+  if [ $# -eq 0 ]; then
+    fc -ln 1 | tail -n 1000 > "$HOME/.local/share/huh/storage.txt"
+    "$HUH_PYTHON" -m huh correct
+  else
+    "$HUH_PYTHON" -m huh "$@"
+  fi
+}
+```
+
+Then reload your shell:
+
+```bash
+source ~/.zshrc   # or source ~/.bashrc
+```
+
+---
+
+## First-Time Setup
+
+Before you can get suggestions, you must choose which local Ollama model to use. Run:
+
+```bash
+huhcli select
+```
+
+This lists every model you have pulled locally and lets you pick one. Your choice is saved to `~/.config/huh/config.json` and will be used for all future corrections. You can change it anytime by running `huhcli select` again.
+
+---
+
+## Usage
+
+After a command fails or you mistype something, simply run:
 
 ```bash
 huhcli
 ```
-And then it stores the last command in storage.txt file in your huh-cli project root directory. 
 
-# Updates JUN 13 2025
-## RUNNING THE TOOL
-
-I have no idea why, but you have to do this anytime you make a change to the files.
-I think it is precompiling stuff and you need to reinstall everything to make the changes known.
+**Example interaction:**
 
 ```bash
-rm -rf build/
-pip install .
-typer ./src/huh/cli.py run lastcmd --n 3 
-```
-
-I also added multiline command support, for eg.
-```bash
-ls \
--l
-```
-
-is actually one command, not two. It is the same as
-```bash
-ls -l
-```
-so the lastcmd should treat it as one command.
-
-I also did some basic refactoring. 
-
-Added support for .bash_history too. 
-Idk if this was already there, but I hard coded lastcmd to only work on mac and linux.
-Windows is 🙅‍♂️
-
----
-
-## 🔧 Setup Instructions
-
-Follow these steps to set up your development environment.
-
-### 1. Install Ollama (for macOS)
-
-Via Homebrew:
-
-```bash
-brew install ollama
-```
-
-Or download it directly from [ollama.com](https://ollama.com/download).
-
-> 💡 This tool also supports Linux. Use your preferred package manager to install Ollama.
-
----
-
-### 2. Set Up Python Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-> We assume that you already have python installed and configured on your system
----
-
-### 3. Install Dependencies
-
-Install [Typer](https://github.com/fastapi/typer):
-
-```bash
-pip install typer
-```
-
-Enable tab completion:
-
-```bash
-typer --install-completion
+$ gti status
+zsh: command not found: gti
+$ huhcli
+Failed command: gti status
+Asking Ollama...
+╭──────── Suggested command ────────╮
+│ git status                        │
+╰───────────────────────────────────╯
+Run (r), Copy (c), Save & Run (s), or Quit (q)? [r]:
 ```
 
 ---
 
-### 4. Run the CLI Tool (Bare Minimum)
+## Commands
 
-```bash
-pip install . 
-```
-
-run using Typer (with tab-completetion in args support):
-
-```bash
-typer ./src/huh/cli.py run lastcmd --n 3 
-```
+| Command | Description |
+|---------|-------------|
+| `huhcli` | Detect the last failed command and suggest a correction. |
+| `huhcli select` | Choose which local Ollama model to use. Required on first run. |
+| `huhcli store <n>` | Save the last `n` commands to the fuzzy matching cache. |
+| `huhcli history [n]` | Show the last `n` commands from captured history (default: 4). |
 
 ---
 
-# Old_README.md just for reference from lastcmd
+## Data Locations
 
-## lastcmd
+User data is stored in standard XDG directories:
 
-A simple Python command-line tool to print the last command(s) you ran in your zsh shell.
+| File | Location |
+|------|----------|
+| Config (selected model) | `~/.config/huh/config.json` |
+| Shell history snapshot | `~/.local/share/huh/storage.txt` |
+| Accepted corrections | `~/.local/share/huh/accepted.json` |
+| Stored commands (fuzzy cache) | `~/.local/share/huh/stored_commands.json` |
 
-## Features
-- Prints the last command from your zsh history by default
-- Supports printing the last N commands (e.g., `lastcmd -n 5` or `lastcmd -5`)
-- Skips its own invocations in the output
+---
 
-## Installation
+## Configuration
 
-1. **Clone or download this repository** to your computer.
-2. Open a terminal and navigate to the directory containing `setup.py` and `lastcmd.py`.
-3. Install the package locally (for your user):
-   ```sh
-   pip install --user .
-   ```
+You can customize behavior via environment variables:
 
-4. **Ensure the Python user scripts directory is in your PATH.**
-   Add this line to your `~/.zshrc` (if not already present):
-   ```sh
-   export PATH="$HOME/Library/Python/3.11/bin:$PATH"
-   ```
-   This should be the folder the lastcmd.py file is. Replace `3.11` with your Python version if different.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://localhost:11434` | URL of your Ollama server. |
 
-5. **Allow the zsh_history file to update after every command.**
-   Add these lines to `~/.zshrc` as well:
-   ```sh
-   setopt INC_APPEND_HISTORY       # Write every command to the history file immediately
-   setopt SHARE_HISTORY            # Share command history across terminals
-   setopt HIST_IGNORE_SPACE        # (Optional) Ignore commands starting with space
-   setopt HIST_SAVE_NO_DUPS        # Don't write duplicates to file
-   ```
+---
 
-6. Reload your shell configuration:
-   ```sh
-   source ~/.zshrc
-   ```
+## How Suggestions Improve Over Time
 
-## Usage
+Whenever you choose **Save & Run (s)**, the pair `(wrong_command -> corrected_command)` is stored in `accepted.json`. On future runs, the top 10 accepted corrections are injected into the prompt as extra context, so the model learns from your preferences and common typos.
 
-- Print the last command:
-  ```sh
-  lastcmd
-  ```
-- Print the last 5 commands:
-  ```sh
-  lastcmd -n 5
-  # or
-  lastcmd -5
-  ```
+The prompt also includes your last 15 real commands as additional context.
 
-## Notes
-- This tool reads from your `~/.zsh_history` file. It is designed for zsh users.
-- If you previously set an alias for `lastcmd`, remove it from your `~/.zshrc` to use the installed command globally.
-- If you use a different shell (like bash), you will need to modify the script to read from the appropriate history file.
+---
 
-## Uninstallation
-To uninstall, run:
-```sh
-pip uninstall lastcmd
-```
+## License
 
-# TODOS
-
-- [] set email in pyproject.toml
-- [] spell check name in pyproject.toml and license
-- [] make this readme more readable
-- [] todo this todo list
+MIT

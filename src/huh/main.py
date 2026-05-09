@@ -1,24 +1,33 @@
 #!/usr/bin/env python3
 
 import os
+import platform
 import subprocess
 from typing import Optional, List
 import typer
 from rich import print
+from rich.console import Console
 from rich.prompt import Prompt
 from rich.panel import Panel
 
-from huh.ai import get_correction, record_accepted
+from huh.paths import data_path
+from huh.ai import (
+    get_correction,
+    record_accepted,
+    is_ollama_installed,
+    list_local_models,
+    get_selected_model,
+    set_selected_model,
+    is_initialized,
+    append_stored,
+)
 
+_plain = Console(highlight=False)
 app = typer.Typer()
 
 
-def _base_dir() -> str:
-    return os.environ.get("HUHCLI_PATH", os.getcwd())
-
-
 def _storage_path() -> str:
-    return os.path.join(_base_dir(), "storage.txt")
+    return data_path("storage.txt")
 
 
 def read_history(path: Optional[str] = None) -> List[str]:
@@ -29,7 +38,6 @@ def read_history(path: Optional[str] = None) -> List[str]:
     except FileNotFoundError:
         return []
 
-    # fc outputs multi-line commands as separate lines ending with \
     joined: List[str] = []
     current = ""
     for line in raw_lines:
@@ -50,9 +58,7 @@ def read_history(path: Optional[str] = None) -> List[str]:
 
 def get_failed_command(history: List[str]) -> Optional[str]:
     skip_prefixes = (
-        # tool internals
         "huh", "python -m huh", "typer ./src/huh", "pip install", "./clean.zsh",
-        # shell meta-commands / config reloads
         "source ", ". ", "export ", "eval ", "alias ", "unalias ",
         "setopt ", "unsetopt ", "clear", "exit", "history", "fc ",
         "bindkey ", "zstyle ", "autoload ", "compinit", "typeset ",
@@ -64,20 +70,136 @@ def get_failed_command(history: List[str]) -> Optional[str]:
 
 
 def _run_command(cmd: str) -> None:
-    """Run a command using the user's actual shell (e.g. zsh) instead of /bin/sh."""
     user_shell = os.environ.get("SHELL", "/bin/sh")
     try:
         subprocess.run([user_shell, "-c", cmd])
     except KeyboardInterrupt:
-        # User interrupted the running command (e.g. ^C on ping). Exit cleanly.
         print()
         raise typer.Exit(0)
 
 
-@app.command()
+def _ensure_platform() -> None:
+    if platform.system() == "Windows":
+        print("[red]Windows is not supported.[/red]")
+        raise typer.Exit(1)
+
+
+def _ensure_ollama() -> None:
+    if not is_ollama_installed():
+        print("[red]Ollama is not running or not installed.[/red]")
+        print("")
+        print("[yellow]Please install Ollama first:[/yellow]")
+        print("  https://ollama.com/download")
+        print("")
+        print("Then pull a model, for example:")
+        print("  ollama pull llama3.2:3b")
+        raise typer.Exit(1)
+
+
+def _ensure_initialized() -> None:
+    if not is_initialized():
+        print("[yellow]huh has not been initialized yet.[/yellow]")
+        print("")
+        print("Please select a model first by running:")
+        print("  huh select")
+        print("")
+        print("Or if you are using the shell wrapper:")
+        print("  huhcli select")
+        raise typer.Exit(1)
+
+
+@app.command(help="Choose which local Ollama model to use for corrections. Required on first run.")
+def select():
+    _ensure_platform()
+    _ensure_ollama()
+
+    try:
+        models = list_local_models()
+    except RuntimeError as e:
+        print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+    if not models:
+        print("[red]No local models found.[/red]")
+        print("")
+        print("Please pull a model first, for example:")
+        print("  ollama pull llama3.2:3b")
+        raise typer.Exit(1)
+
+    current = get_selected_model()
+    print("[bold]Available local models:[/bold]")
+    for i, m in enumerate(models, 1):
+        marker = " [green](current)[/green]" if m == current else ""
+        _plain.print(f"  {i}. {m}{marker}")
+
+    choice = Prompt.ask("Select a model by number or name")
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(models):
+            selected = models[idx]
+        else:
+            selected = choice.strip()
+    except ValueError:
+        selected = choice.strip()
+
+    if selected not in models:
+        print(f"[yellow]Warning: '{selected}' is not in the list of local models.[/yellow]")
+        confirm = Prompt.ask("Continue anyway?", choices=["y", "n"], default="n")
+        if confirm != "y":
+            print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(0)
+
+    set_selected_model(selected)
+    _plain.print(f"[green]Selected model: {selected}[/green]")
+
+
+@app.command(help="Save the last N commands from your shell history so the AI can reference them later.")
+def store(n: int):
+    _ensure_platform()
+
+    history = read_history()
+    if not history:
+        print("[red]No history found.[/red]")
+        raise typer.Exit(1)
+
+    if n <= 0:
+        print("[red]n must be a positive integer.[/red]")
+        raise typer.Exit(1)
+
+    skip_prefixes = (
+        "huh", "python -m huh", "typer ./src/huh", "pip install", "./clean.zsh",
+        "source ", ". ", "export ", "eval ", "alias ", "unalias ",
+        "setopt ", "unsetopt ", "clear", "exit", "history", "fc ",
+        "bindkey ", "zstyle ", "autoload ", "compinit", "typeset ",
+    )
+
+    recent = history[-n:]
+    filtered = []
+    seen = set()
+    for cmd in recent:
+        if any(cmd.startswith(p) for p in skip_prefixes):
+            continue
+        if cmd in seen:
+            continue
+        seen.add(cmd)
+        filtered.append(cmd)
+
+    if not filtered:
+        print("[yellow]No commands to store after filtering.[/yellow]")
+        raise typer.Exit(0)
+
+    append_stored(filtered)
+    print(f"[green]Stored {len(filtered)} command(s).[/green]")
+
+
+@app.command(help="Suggest a fix for your last failed shell command using a local AI model.")
 def correct(
     last: Optional[str] = typer.Option(None, "--last", help="The failed command to correct"),
 ):
+    _ensure_platform()
+    _ensure_ollama()
+    _ensure_initialized()
+
     try:
         history = read_history()
         failed = last or get_failed_command(history)
@@ -99,7 +221,6 @@ def correct(
             print("[red]AI returned an empty suggestion.[/red]")
             raise typer.Exit(1)
 
-        # If the model echoes the few-shot format, extract just the corrected part
         if "->" in suggestion:
             suggestion = suggestion.split("->")[-1].strip()
 
@@ -138,13 +259,8 @@ def correct(
         raise typer.Exit(0)
 
 
-@app.command()
-def hello(name: str):
-    print(f"Hello {name}!")
-
-
-@app.command()
-def analyze(n: Optional[str] = None):
+@app.command(help="Show the last N commands captured from your shell history.")
+def history_cmd(n: Optional[str] = None):
     try:
         with open(_storage_path(), "r") as f:
             lines = f.readlines()

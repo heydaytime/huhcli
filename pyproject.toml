@@ -3,8 +3,8 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "huh"
-version = "0.0.1"
+name = "huhcli"
+version = "0.1.0"
 authors = [
   { name="Mihir Belose", email="belose@wisc.edu" },
   { name="Siddhant Upadhyay", email="upadhyay6@wisc.edu" },
@@ -14,8 +14,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "typer>=0.16.0",
-    "rich",        # for better formatting
-    "requests",    # for Ollama API calls
+    "rich",
+    "requests",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -28,5 +28,5 @@ license-files = ["LICEN[CS]E*"]
 huh = "huh.main:app"
 
 [project.urls]
-Homepage = "https://github.com/heydaytime/huh-cli"
-Issues = "https://github.com/heydaytime/huh-cli/issues"
+Homepage = "https://github.com/heydaytime/huhcli"
+Issues = "https://github.com/heydaytime/huhcli/issues"
