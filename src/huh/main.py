@@ -101,11 +101,78 @@ def _ensure_initialized() -> None:
         print("[yellow]huh has not been initialized yet.[/yellow]")
         print("")
         print("Please select a model first by running:")
-        print("  huh select")
-        print("")
-        print("Or if you are using the shell wrapper:")
         print("  huhcli select")
         raise typer.Exit(1)
+
+
+def _detect_shell() -> str:
+    shell = os.environ.get("SHELL", "")
+    if "bash" in shell:
+        return "bash"
+    return "zsh"
+
+
+def _rc_file(shell: str) -> str:
+    return os.path.expanduser("~/.bashrc") if shell == "bash" else os.path.expanduser("~/.zshrc")
+
+
+def _shell_function(shell: str) -> str:
+    storage = os.path.join(
+        os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
+        "huh",
+        "storage.txt",
+    )
+    if shell == "bash":
+        history_cmd = f'history | tail -n 1000 | sed "s/^[ ]*[0-9]*[ ]*//" > "{storage}"'
+    else:
+        history_cmd = f'fc -ln 1 | tail -n 1000 > "{storage}"'
+
+    return f"""
+# === huhcli shell wrapper (auto-installed) ===
+function huhcli() {{
+  {history_cmd}
+  if [ $# -eq 0 ]; then
+    command huhcli correct
+  else
+    command huhcli "$@"
+  fi
+}}
+# === end huhcli ===
+"""
+
+
+@app.command(help="Install the huhcli shell wrapper into your ~/.zshrc or ~/.bashrc.")
+def setup():
+    _ensure_platform()
+    shell = _detect_shell()
+    rc = _rc_file(shell)
+
+    func = _shell_function(shell)
+
+    existing = ""
+    if os.path.exists(rc):
+        with open(rc, "r") as f:
+            existing = f.read()
+
+    # Remove old wrapper if present
+    marker_start = "# === huhcli shell wrapper"
+    marker_end = "# === end huhcli ==="
+    if marker_start in existing:
+        start = existing.find(marker_start)
+        end = existing.find(marker_end, start) + len(marker_end)
+        existing = existing[:start] + existing[end:]
+        existing = existing.rstrip() + "\n"
+
+    # Append new wrapper
+    with open(rc, "w") as f:
+        f.write(existing.rstrip() + "\n" + func + "\n")
+
+    print(f"[green]Installed huhcli shell wrapper into {rc}[/green]")
+    print("")
+    print("Please reload your shell:")
+    print(f"  source {rc}")
+    print("")
+    print("Then run [bold]huhcli select[/bold] to choose your AI model.")
 
 
 @app.command(help="Choose which local Ollama model to use for corrections. Required on first run.")

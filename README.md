@@ -37,6 +37,18 @@ brew tap heydaytime/huhcli
 brew install huhcli
 ```
 
+Then run the setup command to install the shell wrapper:
+
+```bash
+huhcli setup
+```
+
+Reload your shell:
+
+```bash
+source ~/.zshrc   # or source ~/.bashrc
+```
+
 ### Manual
 
 ```bash
@@ -45,40 +57,7 @@ cd huhcli
 python -m venv venv
 source venv/bin/activate
 pip install .
-```
-
----
-
-## Shell Setup
-
-Generate the shell wrapper. The tool auto-detects your shell, but you can also force it:
-
-```bash
-# zsh
-python -m huh --alias --shell zsh
-
-# bash
-python -m huh --alias --shell bash
-```
-
-Copy the printed block into your rc file (`~/.zshrc` or `~/.bashrc`). It looks like this:
-
-```zsh
-function huhcli() {
-  local HUH_PYTHON="$HUHCLI_PATH/venv/bin/python"
-  source "$HUHCLI_PATH/venv/bin/activate"
-  if [ $# -eq 0 ]; then
-    fc -ln 1 | tail -n 1000 > "$HOME/.local/share/huh/storage.txt"
-    "$HUH_PYTHON" -m huh correct
-  else
-    "$HUH_PYTHON" -m huh "$@"
-  fi
-}
-```
-
-Then reload your shell:
-
-```bash
+python -m huh setup
 source ~/.zshrc   # or source ~/.bashrc
 ```
 
@@ -86,7 +65,7 @@ source ~/.zshrc   # or source ~/.bashrc
 
 ## First-Time Setup
 
-Before you can get suggestions, you must choose which local Ollama model to use. Run:
+After installation, choose which local Ollama model to use:
 
 ```bash
 huhcli select
@@ -125,9 +104,10 @@ Run (r), Copy (c), Save & Run (s), or Quit (q)? [r]:
 | Command | Description |
 |---------|-------------|
 | `huhcli` | Detect the last failed command and suggest a correction. |
+| `huhcli setup` | Install the shell wrapper into your rc file. Run once after installing. |
 | `huhcli select` | Choose which local Ollama model to use. Required on first run. |
 | `huhcli store <n>` | Save the last `n` commands to the fuzzy matching cache. |
-| `huhcli history [n]` | Show the last `n` commands from captured history (default: 4). |
+| `huhcli history-cmd [n]` | Show the last `n` commands from captured history (default: 4). |
 
 ---
 
