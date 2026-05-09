@@ -15,7 +15,7 @@ requires-python = ">=3.9"
 dependencies = [
     "typer>=0.16.0",
     "rich",        # for better formatting
-    "numpy",
+    "requests",    # for Ollama API calls
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -25,7 +25,7 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
 [project.scripts]
-huh = "huh.cli:app"
+huh = "huh.main:app"
 
 [project.urls]
 Homepage = "https://github.com/heydaytime/huh-cli"

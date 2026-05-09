@@ -3,3 +3,5 @@ build/
 venv/
 __pycache__/
 storage.txt
+accepted.json
+.DS_Store
