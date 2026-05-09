@@ -183,14 +183,16 @@ def setup():
         with open(rc, "r") as f:
             existing = f.read()
 
-    # Remove old wrapper if present
-    marker_start = "# === huh shell wrapper"
-    marker_end = "# === end huh ==="
-    if marker_start in existing:
-        start = existing.find(marker_start)
-        end = existing.find(marker_end, start) + len(marker_end)
-        existing = existing[:start] + existing[end:]
-        existing = existing.rstrip() + "\n"
+    # Remove old wrapper if present (including legacy "huhcli" name)
+    for start_marker, end_marker in (
+        ("# === huh shell wrapper", "# === end huh ==="),
+        ("# === huhcli shell wrapper", "# === end huhcli ==="),
+    ):
+        if start_marker in existing:
+            start = existing.find(start_marker)
+            end = existing.find(end_marker, start) + len(end_marker)
+            existing = existing[:start] + existing[end:]
+            existing = existing.rstrip() + "\n"
 
     # Append new wrapper
     with open(rc, "w") as f:
