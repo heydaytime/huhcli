@@ -2,8 +2,12 @@
 
 import os
 import platform
+import signal
 import subprocess
+import sys
+import time
 from typing import Optional, List
+import requests
 import typer
 from rich import print
 from rich.console import Console
@@ -384,6 +388,97 @@ def stored():
     print(f"[bold]Stored commands ({len(commands)} total):[/bold]")
     for i, cmd in enumerate(commands, 1):
         _plain.print(f"  {i}. {cmd}")
+
+
+def _warm_pid_path() -> str:
+    return data_path("warm.pid")
+
+
+def _warm_daemon() -> None:
+    """Background daemon that pings Ollama to keep the model loaded."""
+    pid_path = _warm_pid_path()
+    with open(pid_path, "w") as f:
+        f.write(str(os.getpid()))
+
+    def _cleanup(signum, frame):
+        try:
+            os.remove(pid_path)
+        except FileNotFoundError:
+            pass
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _cleanup)
+    signal.signal(signal.SIGINT, _cleanup)
+
+    model = get_selected_model()
+    url = os.environ.get("OLLAMA_HOST", "http://localhost:11434") + "/api/generate"
+
+    while True:
+        try:
+            requests.post(
+                url,
+                json={
+                    "model": model,
+                    "prompt": "",
+                    "stream": False,
+                    "options": {"num_predict": 1},
+                },
+                timeout=10,
+            )
+        except Exception:
+            pass
+        time.sleep(30)
+
+
+@app.command(help="Keep the selected Ollama model loaded in memory (on/off).")
+def warm(
+    state: str = typer.Argument(..., help="'on' to start warming, 'off' to stop"),
+):
+    _ensure_platform()
+
+    pid_path = _warm_pid_path()
+
+    if state.lower() == "on":
+        if os.path.exists(pid_path):
+            with open(pid_path, "r") as f:
+                old_pid = f.read().strip()
+            try:
+                os.kill(int(old_pid), 0)
+                print(f"[yellow]Warm daemon already running (PID {old_pid}).[/yellow]")
+                raise typer.Exit(0)
+            except (ProcessLookupError, ValueError):
+                pass
+
+        pid = os.fork()
+        if pid == 0:
+            # Child process: daemonize
+            os.setsid()
+            os.umask(0)
+            _warm_daemon()
+        else:
+            # Parent process
+            print(f"[green]Warm daemon started (PID {pid}).[/green]")
+            print(f"[dim]Model '{get_selected_model()}' will stay loaded in memory.[/dim]")
+            print("Run [bold]huh warm off[/bold] to stop.")
+
+    elif state.lower() == "off":
+        if not os.path.exists(pid_path):
+            print("[yellow]Warm daemon is not running.[/yellow]")
+            raise typer.Exit(0)
+
+        with open(pid_path, "r") as f:
+            pid = f.read().strip()
+
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+            os.remove(pid_path)
+            print("[green]Warm daemon stopped.[/green]")
+        except (ProcessLookupError, ValueError):
+            os.remove(pid_path)
+            print("[yellow]Warm daemon was not running.[/yellow]")
+    else:
+        print("[red]Invalid state. Use 'on' or 'off'.[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
