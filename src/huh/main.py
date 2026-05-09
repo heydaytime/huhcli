@@ -204,7 +204,7 @@ def setup():
     print("Then run [bold]huhcli select[/bold] to choose your AI model.")
 
 
-@app.command(help="Choose which local Ollama model to use for corrections. Required on first run.")
+@app.command(help="Choose the Ollama model for corrections (required on first run).")
 def select():
     _ensure_platform()
     _ensure_ollama()
@@ -249,8 +249,8 @@ def select():
     _plain.print(f"[green]Selected model: {selected}[/green]")
 
 
-@app.command(help="Save the last N commands from your shell history so the AI can reference them later.")
-def store(n: int):
+@app.command(help="Save recent commands for fuzzy matching.")
+def store(n: int = typer.Argument(help="Number of recent commands to save")):
     _ensure_platform()
 
     history = read_history()
@@ -288,7 +288,7 @@ def store(n: int):
     print(f"[green]Stored {len(filtered)} command(s).[/green]")
 
 
-@app.command(help="Suggest a fix for your last failed shell command using a local AI model.")
+@app.command(help="Fix your last failed command using a local AI model.")
 def correct(
     last: Optional[str] = typer.Option(None, "--last", help="The failed command to correct"),
 ):
@@ -355,31 +355,23 @@ def correct(
         raise typer.Exit(0)
 
 
-@app.command(name="history", help="Show the last N commands captured from your shell history.")
-def history_cmd(n: Optional[str] = None):
+@app.command(name="history", help="Show recent commands from captured shell history.")
+def history_cmd(n: int = typer.Argument(4, help="Number of commands to show")):
     try:
         with open(_storage_path(), "r") as f:
             lines = f.readlines()
             length = len(lines)
     except FileNotFoundError:
-        return typer.echo("storage.txt not found.")
-    def_val = 4
-    try:
-        n_int = int(n) if n is not None else def_val
-    except ValueError:
-        return typer.echo("Please provide a valid integer for n.")
-    if length < def_val:
-        num = length
-    else:
-        num = n_int if n_int < length else def_val
+        return typer.echo("No history captured yet.")
 
+    num = min(n, length) if length > 0 else 0
     commands = lines[-num:]
-    print("Last commands:")
+    print(f"Last {num} command(s):")
     for cmd in commands:
         print(cmd.strip())
 
 
-@app.command(help="Show the commands currently stored in the fuzzy matching cache.")
+@app.command(help="Show commands stored in the fuzzy matching cache.")
 def stored():
     commands = load_stored()
     if not commands:
