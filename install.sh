@@ -19,7 +19,7 @@ mkdir -p "$STORAGE_DIR"
 
 install_macos() {
     if ! command -v brew >/dev/null 2>&1; then
-        echo "Homebrew is required but not installed."
+        echo "[ERROR] Homebrew is required but not installed."
         echo "Install it from https://brew.sh and rerun this script."
         exit 1
     fi
@@ -32,37 +32,42 @@ install_macos() {
 install_linux() {
     if ! command -v python3 >/dev/null 2>&1; then
         echo "[ERROR] Python 3 is required but not installed."
-        echo "Install it with your package manager (e.g., apt install python3) and rerun."
+        echo "Install it with your package manager (e.g., sudo apt install python3) and rerun."
         exit 1
     fi
 
     PYTHON="$(command -v python3)"
 
-    if ! "$PYTHON" -m pip --version >/dev/null 2>&1; then
-        echo "[ERROR] pip is not installed."
-        echo "Install it with: $PYTHON -m ensurepip --upgrade"
-        echo "Or: sudo apt install python3-pip"
+    # Check venv module is available
+    if ! "$PYTHON" -m venv --help >/dev/null 2>&1; then
+        echo "[ERROR] python3-venv is not installed."
+        echo "Install it with: sudo apt install python3-venv"
         exit 1
     fi
 
+    INSTALL_DIR="$HOME/.local/lib/huhcli"
+    VENV_DIR="$INSTALL_DIR/venv"
     BIN_DIR="$HOME/.local/bin"
-    mkdir -p "$BIN_DIR"
+
+    echo "Installing huhcli to $INSTALL_DIR ..."
+    rm -rf "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR"
 
     # Download latest release
     TMPDIR="$(mktemp -d)"
     TARBALL="$TMPDIR/huhcli.tar.gz"
 
     echo "Downloading huhcli..."
-    if ! curl -fsSL "https://github.com/heydaytime/huhcli/archive/refs/tags/v0.1.3.tar.gz" -o "$TARBALL"; then
+    if ! curl -fsSL "https://github.com/heydaytime/huhcli/archive/refs/tags/v0.1.4.tar.gz" -o "$TARBALL"; then
         echo "[ERROR] Failed to download huhcli. Check your internet connection."
         rm -rf "$TMPDIR"
         exit 1
     fi
 
-    echo "Installing huhcli..."
+    echo "Extracting..."
     tar -xzf "$TARBALL" -C "$TMPDIR"
 
-    # Find extracted directory (handles any version)
+    # Find extracted directory
     EXTRACTED_DIR="$(find "$TMPDIR" -maxdepth 1 -type d -name 'huhcli-*' | head -n 1)"
     if [ -z "$EXTRACTED_DIR" ]; then
         echo "[ERROR] Could not find extracted huhcli directory."
@@ -70,19 +75,25 @@ install_linux() {
         exit 1
     fi
 
-    # Install with pip
-    if ! "$PYTHON" -m pip install --user "$EXTRACTED_DIR"; then
+    # Create venv
+    echo "Creating virtual environment..."
+    "$PYTHON" -m venv "$VENV_DIR"
+
+    # Install into venv
+    echo "Installing into virtual environment..."
+    if ! "$VENV_DIR/bin/pip" install "$EXTRACTED_DIR"; then
         echo "[ERROR] pip install failed."
-        rm -rf "$TMPDIR"
+        rm -rf "$TMPDIR" "$INSTALL_DIR"
         exit 1
     fi
 
     rm -rf "$TMPDIR"
 
-    # Create wrapper script
-    cat > "$BIN_DIR/huhcli" <<'EOF'
+    # Create wrapper script that uses venv python
+    mkdir -p "$BIN_DIR"
+    cat > "$BIN_DIR/huhcli" <<EOF
 #!/usr/bin/env bash
-exec python3 -m huh "$@"
+exec "$VENV_DIR/bin/python" -m huh "\$@"
 EOF
     chmod +x "$BIN_DIR/huhcli"
 
