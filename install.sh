@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 echo "=== huhcli installer ==="
 
@@ -31,31 +31,55 @@ install_macos() {
 
 install_linux() {
     if ! command -v python3 >/dev/null 2>&1; then
-        echo "Python 3 is required but not installed."
+        echo "[ERROR] Python 3 is required but not installed."
         echo "Install it with your package manager (e.g., apt install python3) and rerun."
         exit 1
     fi
 
     PYTHON="$(command -v python3)"
-    INSTALL_DIR="$HOME/.local/lib/huhcli"
+
+    if ! "$PYTHON" -m pip --version >/dev/null 2>&1; then
+        echo "[ERROR] pip is not installed."
+        echo "Install it with: $PYTHON -m ensurepip --upgrade"
+        echo "Or: sudo apt install python3-pip"
+        exit 1
+    fi
+
     BIN_DIR="$HOME/.local/bin"
+    mkdir -p "$BIN_DIR"
 
-    echo "Installing huhcli to $INSTALL_DIR ..."
-    rm -rf "$INSTALL_DIR"
-    mkdir -p "$INSTALL_DIR"
-
-    # Download latest release tarball
+    # Download latest release
     TMPDIR="$(mktemp -d)"
-    curl -fsSL \
-        "https://github.com/heydaytime/huhcli/archive/refs/tags/v0.1.2.tar.gz" \
-        -o "$TMPDIR/huhcli.tar.gz"
+    TARBALL="$TMPDIR/huhcli.tar.gz"
 
-    tar -xzf "$TMPDIR/huhcli.tar.gz" -C "$TMPDIR"
-    mv "$TMPDIR/huhcli-0.1.2/src/huh" "$INSTALL_DIR/"
+    echo "Downloading huhcli..."
+    if ! curl -fsSL "https://github.com/heydaytime/huhcli/archive/refs/tags/v0.1.3.tar.gz" -o "$TARBALL"; then
+        echo "[ERROR] Failed to download huhcli. Check your internet connection."
+        rm -rf "$TMPDIR"
+        exit 1
+    fi
+
+    echo "Installing huhcli..."
+    tar -xzf "$TARBALL" -C "$TMPDIR"
+
+    # Find extracted directory (handles any version)
+    EXTRACTED_DIR="$(find "$TMPDIR" -maxdepth 1 -type d -name 'huhcli-*' | head -n 1)"
+    if [ -z "$EXTRACTED_DIR" ]; then
+        echo "[ERROR] Could not find extracted huhcli directory."
+        rm -rf "$TMPDIR"
+        exit 1
+    fi
+
+    # Install with pip
+    if ! "$PYTHON" -m pip install --user "$EXTRACTED_DIR"; then
+        echo "[ERROR] pip install failed."
+        rm -rf "$TMPDIR"
+        exit 1
+    fi
+
     rm -rf "$TMPDIR"
 
     # Create wrapper script
-    mkdir -p "$BIN_DIR"
     cat > "$BIN_DIR/huhcli" <<'EOF'
 #!/usr/bin/env bash
 exec python3 -m huh "$@"
@@ -68,6 +92,7 @@ EOF
         echo "[WARNING] $HOME/.local/bin is not in your PATH."
         echo "Add this to your $RC_FILE:"
         echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo "Then reload your shell."
     fi
 
     echo "Installed binary to $BIN_DIR/huhcli"
@@ -79,7 +104,7 @@ if [ "$OS" = "Darwin" ]; then
 elif [ "$OS" = "Linux" ]; then
     install_linux
 else
-    echo "Unsupported OS: $OS"
+    echo "[ERROR] Unsupported OS: $OS"
     exit 1
 fi
 
