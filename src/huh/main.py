@@ -20,6 +20,7 @@ from huh.ai import (
     set_selected_model,
     is_initialized,
     append_stored,
+    load_stored,
 )
 
 _plain = Console(highlight=False)
@@ -326,7 +327,7 @@ def correct(
         raise typer.Exit(0)
 
 
-@app.command(help="Show the last N commands captured from your shell history.")
+@app.command(name="history", help="Show the last N commands captured from your shell history.")
 def history_cmd(n: Optional[str] = None):
     try:
         with open(_storage_path(), "r") as f:
@@ -348,6 +349,19 @@ def history_cmd(n: Optional[str] = None):
     print("Last commands:")
     for cmd in commands:
         print(cmd.strip())
+
+
+@app.command(help="Show the commands currently stored in the fuzzy matching cache.")
+def stored():
+    commands = load_stored()
+    if not commands:
+        print("[yellow]No stored commands found.[/yellow]")
+        print("Use [bold]huhcli store <n>[/bold] to save commands from your history.")
+        raise typer.Exit(0)
+
+    print(f"[bold]Stored commands ({len(commands)} total):[/bold]")
+    for i, cmd in enumerate(commands, 1):
+        _plain.print(f"  {i}. {cmd}")
 
 
 if __name__ == "__main__":
