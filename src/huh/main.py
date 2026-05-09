@@ -130,8 +130,8 @@ def _shell_function(shell: str) -> str:
     return f"""
 # === huhcli shell wrapper (auto-installed) ===
 function huhcli() {{
-  {history_cmd}
   if [ $# -eq 0 ]; then
+    {history_cmd}
     command huhcli correct
   else
     command huhcli "$@"
