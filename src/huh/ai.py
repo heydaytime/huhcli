@@ -239,5 +239,7 @@ def get_correction(failed_cmd: str, history: List[str]) -> str:
 
 def record_accepted(wrong: str, right: str) -> None:
     accepted = _load_accepted()
-    accepted.append({"wrong": wrong, "right": right})
+    entry = {"wrong": wrong, "right": right}
+    if entry not in accepted:
+        accepted.append(entry)
     _save_accepted(accepted)
